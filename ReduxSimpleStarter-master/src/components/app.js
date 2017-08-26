@@ -6,22 +6,29 @@ require('codemirror/mode/javascript/javascript');
 require('codemirror/mode/xml/xml');
 require('codemirror/mode/markdown/markdown');
 
-const testCases = []
+// const testCases = []
 
-for (var i = 10; i < 10000; i += 50) {
-  testCases.push(new Array(i).fill(Math.floor(Math.random() * 100)))
-}
+// for (var i = 10; i < 1000; i += 50) {
+//   testCases.push(new Array(i).fill(Math.floor(Math.random() * 100)))
+// }
 
 export default class App extends Component {
 
   state = {
     code: "",
+    testCases: [],
     timeData: {},
     time: [],
     size: [],
   }
 
   updateCode = (newCode) => {
+    this.setState({
+      code: newCode,
+    });
+  }
+  
+  updateTests = (newCode) => {
     this.setState({
       code: newCode,
     });
@@ -107,6 +114,7 @@ export default class App extends Component {
     return (
       <div>
         <CodeMirror value={this.state.code} onChange={this.updateCode} options={options} />
+        <CodeMirror value={this.state.testCases} onChange={this.updateTests} options={options} />
         <button type='submit' onClick={this.handleClick}>Click Me</button>
         <h1>{JSON.stringify(this.state.timeData)}</h1>
         <Line data={data} options={chartOptions} style={styleChart} />
