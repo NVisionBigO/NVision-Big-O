@@ -2,24 +2,24 @@ import React, { Component } from 'react';
 import CodeMirror from 'react-codemirror';
 import { Line } from 'react-chartjs-2'
 
+
 require('codemirror/mode/javascript/javascript');
 require('codemirror/mode/xml/xml');
 require('codemirror/mode/markdown/markdown');
 
-// const testCases = []
+const testCases = []
+for (var i = 10; i < 8000; i += 50) {
+  testCases.push(new Array(i).fill(Math.floor(Math.random() * 100)))
+}
 
-// for (var i = 10; i < 1000; i += 50) {
-//   testCases.push(new Array(i).fill(Math.floor(Math.random() * 100)))
-// }
+let dataRef = { label: null, data: null, backgroundColor: [], borderColor: [], borderWidth: 1}
 
 export default class App extends Component {
-
   state = {
-    code: "",
-    testCases: [],
-    timeData: {},
-    time: [],
-    size: [],
+    code: "function O1(arr) { return arr[0] }",
+    timeData: [],
+    text: '',
+    lineData: []
   }
 
   updateCode = (newCode) => {
@@ -27,54 +27,65 @@ export default class App extends Component {
       code: newCode,
     });
   }
-  
-  updateTests = (newCode) => {
+
+  handleChange = (e) => {
     this.setState({
-      code: newCode,
-    });
+      text: e.target.value
+    })
   }
 
   handleClick = () => {
-
+    //method onClick button "Click Me"
     let match = this.state.code.match(/function/)
     const firstIndex = this.state.code.indexOf(match[0]) + match[0].length + 1
     const lastIndex = this.state.code.indexOf('(')
     let fnName = this.state.code.slice(firstIndex, lastIndex)
-
+    //finds the indices to grab the function Name in codemirror ..function fnName
     let dateStart;
     let dateEnd;
-
+    //plot size: runTime based on testCases
     testCases.forEach(testArray => {
 
       dateStart = performance.now();
       eval(this.state.code + ' ' + fnName + `([${testArray}])`)
       dateEnd = performance.now();
 
+      // let newTime = this.state.timeData;
+      // let newSize = this.state.sizeData;
+      //
+      // newTime.push(dateEnd - dateStart)
+      // newSize.push(testArray.length)
+      let timeDiff = dateEnd - dateStart
       let newObj = this.state.timeData;
-      let timeDiff = dateEnd - dateStart;
-      newObj[testArray.length] = timeDiff;
-
+      newObj[testArray.length] = timeDiff
       this.setState({
-        timeData: newObj,
-        size: [...this.state.size, testArray.length],
-        time: [...this.state.time, timeDiff]
+        timeData: newObj
       })
-
     })
+    dataRef.label = this.state.text;
+    dataRef.data = Object.values(this.state.timeData)
+    dataRef.backgroundColor = [
+      'rgba(255, 99, 132, 0.2)',
+      'rgba(54, 162, 235, 0.2)',
+      'rgba(255, 206, 86, 0.2)',
+      'rgba(75, 192, 192, 0.2)',
+      'rgba(153, 102, 255, 0.2)',
+      'rgba(255, 159, 64, 0.2)'
+    ]
+    dataRef.borderColor = ['rgba(255, 159, 64, 1)']
 
-
+    let newData = this.state.lineData;
+    newData.push(dataRef)
+    this.setState({
+      lineData: newData
+    })
   }
 
-  render() {
+  render () {
     var options = {
       lineNumbers: true,
-      mode: 'javascript',
+      mode: 'javascript'
     };
-
-    const styleChart = {
-      width: 600,
-      height: 250
-    }
 
     const chartOptions = {
       scales: {
@@ -84,40 +95,19 @@ export default class App extends Component {
           }
         }]
       }
-    }
+    };
 
     const data = {
       labels: Object.keys(this.state.timeData),
-      datasets: [{
-        label: 'NVision Big O',
-        data: Object.values(this.state.timeData),
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.2)',
-          'rgba(54, 162, 235, 0.2)',
-          'rgba(255, 206, 86, 0.2)',
-          'rgba(75, 192, 192, 0.2)',
-          'rgba(153, 102, 255, 0.2)',
-          'rgba(255, 159, 64, 0.2)'
-        ],
-        borderColor: [
-          'rgba(255,99,132,1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(153, 102, 255, 1)',
-          'rgba(255, 159, 64, 1)'
-        ],
-        borderWidth: 1
-      }]
+      datasets: this.state.lineData,
     }
 
     return (
       <div>
         <CodeMirror value={this.state.code} onChange={this.updateCode} options={options} />
-        <CodeMirror value={this.state.testCases} onChange={this.updateTests} options={options} />
-        <button type='submit' onClick={this.handleClick}>Click Me</button>
-        <h1>{JSON.stringify(this.state.timeData)}</h1>
-        <Line data={data} options={chartOptions} style={styleChart} />
+        <input type='text' onChange={this.handleChange} value={this.state.text}/>
+        <button type='submit' onClick={this.handleClick}>Graph Big-O</button>
+        <Line data={data} options={chartOptions}  width={400} height={200}/>
       </div>
     );
   }
