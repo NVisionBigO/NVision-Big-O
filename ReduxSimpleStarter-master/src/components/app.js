@@ -1,25 +1,141 @@
 import React, { Component } from 'react';
 import CodeMirror from 'react-codemirror';
 import { Line } from 'react-chartjs-2'
-
-
+import Buttons from './buttons'
 require('codemirror/mode/javascript/javascript');
 require('codemirror/mode/xml/xml');
 require('codemirror/mode/markdown/markdown');
+let dateStart = 0
+let dateEnd = 0
+let count = 0;
 
-const testCases = []
-for (var i = 10; i < 8000; i += 50) {
-  testCases.push(new Array(i).fill(Math.floor(Math.random() * 100)))
+let leastSquare = (x, y) => {
+
+  let xMean = x.reduce((accum, num) => { return accum + num }) / x.length
+  let yMean = y.reduce((accum, num) => { return accum + num }) / y.length
+
+  let a = [];
+  let b = [];
+
+  for (let i = 0; i < x.length; i++) {
+    let tempA = x[i] - xMean;
+    let tempB = y[i] - yMean;
+    a.push(tempA * tempB)
+    b.push(tempA * tempA)
+  }
+  let top = a.reduce((accum, num) => { return accum + num })
+  let bottom = b.reduce((accum, num) => { return accum + num })
+  let slope = top / bottom
+  let yintercept = yMean - slope * xMean;
+
+  return [slope, yintercept]
 }
 
-let dataRef = { label: null, data: null, backgroundColor: [], borderColor: [], borderWidth: 1}
+let generateColor = () => {
+  let colors = ['#143642', '#0F8B8D', '#EC9A29', '#A8201A', '#353535', '#3C6E71', '#4C934C', '#F1C8DB', '#230007', '#6CCFF6', '#98CE00'];
+  return colors[Math.floor(Math.random() * (colors.length))]
+}
+
+let randomize = (arr) => {
+  let newarr = [];
+  for(let i = 0; i < arr.length; i++){
+   newarr.push(Math.floor(Math.random()*100))
+ }
+ return newarr
+}
 
 export default class App extends Component {
   state = {
-    code: "function O1(arr) { return arr[0] }",
-    timeData: [],
-    text: '',
-    lineData: []
+    code: '//Insert Code here...',
+    sizeArr: [],
+    timeArr: [],
+    lineData: [],
+    tests: [],
+    bestFit: {},
+    colors: 'black'
+  }
+  componentDidMount() {
+    const testCases = []
+    for (var i = 2; i < 20; i += 1) {
+      testCases.push(randomize(new Array(i)))
+    }
+    this.setState({
+      tests: testCases
+    })
+  }
+  handleClick = () => {
+    this.setState({
+      colors: generateColor()
+    }, () => {
+      console.log(this.state.colors)
+      let match = this.state.code.match(/function/)
+      let firstIndex = this.state.code.indexOf(match[0]) + match[0].length + 1
+      let lastIndex = this.state.code.indexOf('(')
+      let fnName = this.state.code.slice(firstIndex, lastIndex)
+      let time = [];
+      let size = [];
+      this.state.tests.forEach(test => {
+        dateStart = performance.now()
+        eval(this.state.code + ' ' + fnName + `([${test}], 50)`)
+        dateEnd = performance.now();
+        let timeDiff = dateEnd - dateStart;
+        size.push(test.length)
+        time.push(timeDiff)
+      })
+      let dataRef = {};
+      dataRef.label = 'Line ' + count++;
+      dataRef.data = time;
+      dataRef.backgroundColor = 'transparent'
+      dataRef.borderColor = this.state.colors
+      dataRef.borderWidth = 3
+      dataRef.pointBackgroundColor = this.state.colors
+      dataRef.pointBorderColor = this.state.colors
+      dataRef.pointRadius = 2
+
+      let newData = this.state.lineData;
+      newData.push(dataRef)
+      this.setState({
+        lineData: newData,
+        timeArr: time,
+        sizeArr: size
+      })
+    })
+  }
+  handleClear = () => {
+    this.setState({
+      sizeArr: [],
+      timeArr: [],
+      lineData: [],
+    })
+  }
+
+  handleFit = () => {
+    console.log(this.state.colors)
+    let Formula = leastSquare(this.state.sizeArr, this.state.timeArr)
+    let xBestFit = [];
+    let yBestFit = [];
+    for (let i = 0; i < this.state.sizeArr.length; i++) {
+      xBestFit.push(this.state.sizeArr[i])
+      yBestFit.push(Formula[0] * this.state.sizeArr[i] + Formula[1])
+    }
+    let dataRef = {};
+    dataRef.label = `LSF ${count - 1}`;
+    dataRef.data = yBestFit;
+    dataRef.backgroundColor = 'transparent'
+    dataRef.borderColor = this.state.colors
+    dataRef.borderWidth = 3
+    dataRef.pointBackgroundColor = this.state.colors
+    dataRef.pointBorderColor = this.state.colors
+    dataRef.pointRadius = 0
+    
+
+    let newData = this.state.lineData;
+    newData.push(dataRef)
+    this.setState({
+      lineData: newData,
+      timeArr: yBestFit,
+      sizeArr: xBestFit,
+    })
   }
 
   updateCode = (newCode) => {
@@ -27,66 +143,11 @@ export default class App extends Component {
       code: newCode,
     });
   }
-
-  handleChange = (e) => {
-    this.setState({
-      text: e.target.value
-    })
-  }
-
-  handleClick = () => {
-    //method onClick button "Click Me"
-    let match = this.state.code.match(/function/)
-    const firstIndex = this.state.code.indexOf(match[0]) + match[0].length + 1
-    const lastIndex = this.state.code.indexOf('(')
-    let fnName = this.state.code.slice(firstIndex, lastIndex)
-    //finds the indices to grab the function Name in codemirror ..function fnName
-    let dateStart;
-    let dateEnd;
-    //plot size: runTime based on testCases
-    testCases.forEach(testArray => {
-
-      dateStart = performance.now();
-      eval(this.state.code + ' ' + fnName + `([${testArray}])`)
-      dateEnd = performance.now();
-
-      // let newTime = this.state.timeData;
-      // let newSize = this.state.sizeData;
-      //
-      // newTime.push(dateEnd - dateStart)
-      // newSize.push(testArray.length)
-      let timeDiff = dateEnd - dateStart
-      let newObj = this.state.timeData;
-      newObj[testArray.length] = timeDiff
-      this.setState({
-        timeData: newObj
-      })
-    })
-    dataRef.label = this.state.text;
-    dataRef.data = Object.values(this.state.timeData)
-    dataRef.backgroundColor = [
-      'rgba(255, 99, 132, 0.2)',
-      'rgba(54, 162, 235, 0.2)',
-      'rgba(255, 206, 86, 0.2)',
-      'rgba(75, 192, 192, 0.2)',
-      'rgba(153, 102, 255, 0.2)',
-      'rgba(255, 159, 64, 0.2)'
-    ]
-    dataRef.borderColor = ['rgba(255, 159, 64, 1)']
-
-    let newData = this.state.lineData;
-    newData.push(dataRef)
-    this.setState({
-      lineData: newData
-    })
-  }
-
-  render () {
+  render() {
     var options = {
       lineNumbers: true,
       mode: 'javascript'
     };
-
     const chartOptions = {
       scales: {
         yAxes: [{
@@ -96,19 +157,18 @@ export default class App extends Component {
         }]
       }
     };
-
-    const data = {
-      labels: Object.keys(this.state.timeData),
+    let datag = {
+      labels: this.state.sizeArr,
       datasets: this.state.lineData,
+      fill: true
     }
-
     return (
-      <div>
+      <div style={{backgroundColor: "#DCECE9"}}>
+        <h1 style={{textAlign: 'center'}}>NVision Big O</h1>
         <CodeMirror value={this.state.code} onChange={this.updateCode} options={options} />
-        <input type='text' onChange={this.handleChange} value={this.state.text}/>
-        <button type='submit' onClick={this.handleClick}>Graph Big-O</button>
-        <Line data={data} options={chartOptions}  width={400} height={200}/>
+        <Buttons graph={this.handleClick} clear={this.handleClear} fit={this.handleFit} />
+        <Line data={datag} options={chartOptions} width={400} height={200} />
       </div>
-    );
+    )
   }
 }
